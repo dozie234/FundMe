@@ -1,5 +1,53 @@
- document.addEventListener("DOMContentLoaded", () => {
+ // Global variable to store the user's connected wallet address
+let userWalletAddress = null;
+
+// 1. Check if the app is running in a Web3/MiniPay environment
+function checkWalletEnvironment() {
+    const connectBtn = document.getElementById("connectWalletBtn");
     
+    if (window.ethereum) {
+        console.log("Web3 Environment detected! MiniPay provider is available.");
+        // Listen for a click on the connect button
+        if (connectBtn) {
+            connectBtn.addEventListener("click", connectWallet);
+        }
+    } else {
+        console.log("Standard browser detected. MiniPay provider not found.");
+        if (connectBtn) {
+            connectBtn.innerText = "MiniPay Required";
+            connectBtn.style.opacity = "0.7";
+        }
+    }
+}
+
+// 2. Request account access from MiniPay/Celo wallet
+async function connectWallet() {
+    const connectBtn = document.getElementById("connectWalletBtn");
+    
+    try {
+        // Request wallet addresses from the provider
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        
+        if (accounts.length > 0) {
+            userWalletAddress = accounts[0];
+            console.log("Connected wallet address:", userWalletAddress);
+            
+            // Shorten the address for the UI (e.g., 0x1234...abcd)
+            const shortAddress = `${userWalletAddress.substring(0, 6)}...${userWalletAddress.substring(userWalletAddress.length - 4)}`;
+            
+            // Update the button text to show they are logged in
+            if (connectBtn) {
+                connectBtn.innerText = shortAddress;
+                connectBtn.classList.add("connected"); // Optional: add styles later if you want
+            }
+        }
+    } catch (error) {
+        console.error("User denied account access or error occurred:", error);
+    }
+}
+ 
+ document.addEventListener("DOMContentLoaded", () => {
+    checkWalletEnvironment()
     // ==========================================
     // 1. GLOBAL ELEMENT SELECTIONS
     // ==========================================
