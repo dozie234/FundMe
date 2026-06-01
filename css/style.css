@@ -435,3 +435,45 @@ body {
     line-height: 1.4;
 }
 
+
+/* ==========================================
+   FUND CAMPAIGN BUTTON STYLES
+   ========================================== */
+.fund-btn {
+    width: 100%;
+    background-color: #00ff66; /* Vibrant Web3 Green */
+    color: #0d0d0d; /* Dark text for high contrast */
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    margin-top: 15px;
+    box-shadow: 0 4px 12px rgba(0, 255, 102, 0.2);
+}
+
+/* Hover & Desktop Focus State */
+.fund-btn:hover {
+    background-color: #00cc52;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 255, 102, 0.3);
+}
+
+/* Active Mobile Press State */
+.fund-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(0, 255, 102, 0.1);
+}
+
+/* Disabled State (When Tx is processing) */
+.fund-btn:disabled {
+    background-color: #262626 !important;
+    color: #8c8c8c !important;
+    border: 1px solid #404040;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
