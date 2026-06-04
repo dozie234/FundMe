@@ -1,5 +1,6 @@
  // Global variable to store the user's connected wallet address
 let userWalletAddress = null;
+let web3Provider = null;
 
 // 1. Check if the app is running in a Web3/MiniPay environment
 function checkWalletEnvironment() {
@@ -7,6 +8,10 @@ function checkWalletEnvironment() {
     
     if (window.ethereum) {
         console.log("Web3 Environment detected! MiniPay provider is available.");
+        
+        // Initialize the Ethers wrapper around the injected provider object
+        web3Provider = new ethers.BrowserProvider(window.ethereum);
+        
         // Listen for a click on the connect button
         if (connectBtn) {
             connectBtn.addEventListener("click", connectWallet);
