@@ -2,25 +2,51 @@
 let userWalletAddress = null;
 let web3Provider = null;
 
+// --- NEW: Smart Contract Deployment Parameters ---
+// Placeholders for when we deploy the contract to the Celo Alfajores Testnet
+const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; 
+
+// The ABI maps our JS to our smart contract functions
+const CONTRACT_ABI = [
+    "function fundCampaign(uint256 campaignId) public payable",
+    "function createCampaign(string title, string description, uint256 goal) public",
+    "function getCampaigns() public view returns (tuple(address creator, string title, string description, uint256 goal, uint256 amountRaised)[])"
+];
+//
+
 // 1. Check if the app is running in a Web3/MiniPay environment
 function checkWalletEnvironment() {
     const connectBtn = document.getElementById("connectWalletBtn");
     
+    // --- DEVELOPMENT MODE AUTOMATION ---
+    if (!window.ethereum) {
+        console.log("Desktop detected: Activating automatic Test Wallet Environment...");
+        window.ethereum = {
+            request: async (args) => {
+                if (args.method === 'eth_requestAccounts') {
+                    return ["0x71C249a123456789abcdef123456789abcdef123"];
+                }
+                // ✅ ADDED: Fake the Chain ID request so Ethers v6 doesn't crash
+                if (args.method === 'eth_chainId') {
+                    return "0xaf43"; // Hex for 44787 (Celo Alfajores Testnet)
+                }
+                return null;
+            }
+        };
+    }
+    // ------------------------------------
+
     if (window.ethereum) {
         console.log("Web3 Environment detected! MiniPay provider is available.");
         
-        // Initialize the Ethers wrapper around the injected provider object
+        // Initialize the Ethers wrapper around the provider object
         web3Provider = new ethers.BrowserProvider(window.ethereum);
         
-        // Listen for a click on the connect button
+        // Restore button to active state for testing
         if (connectBtn) {
+            connectBtn.innerText = "Connect Wallet";
+            connectBtn.style.opacity = "1";
             connectBtn.addEventListener("click", connectWallet);
-        }
-    } else {
-        console.log("Standard browser detected. MiniPay provider not found.");
-        if (connectBtn) {
-            connectBtn.innerText = "MiniPay Required";
-            connectBtn.style.opacity = "0.7";
         }
     }
 }
@@ -37,7 +63,15 @@ async function connectWallet() {
             userWalletAddress = accounts[0];
             console.log("Connected wallet address:", userWalletAddress);
             
-            // ✅ FIXED: Wrapped securely inside backticks
+            // --- NEW: Query Network Chain ID using Ethers ---
+            if (web3Provider) {
+                const network = await web3Provider.getNetwork();
+                // Celo Mainnet Chain ID is 42220, Alfajores Testnet is 44787
+                console.log("Connected to Chain ID:", network.chainId.toString());
+            }
+            // ------------------------------------------------
+            
+            // Shorten the address for the UI (e.g., 0x1234...abcd)
             const shortAddress = `${userWalletAddress.substring(0, 6)}...${userWalletAddress.substring(userWalletAddress.length - 4)}`;
             
             // Update the button text to show they are logged in
@@ -48,6 +82,23 @@ async function connectWallet() {
         }
     } catch (error) {
         console.error("User denied account access or error occurred:", error);
+    }
+}
+
+// 3. Initialize the Smart Contract Instance for Read/Write Actions
+async function getSmartContractInstance() {
+    if (!web3Provider) return null;
+    
+    try {
+        // Get the signer (the user's wallet that signs transactions)
+        const signer = await web3Provider.getSigner();
+        
+        // Create a new Ethers contract instance linked to the network
+        const fundMeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        return fundMeContract;
+    } catch (error) {
+        console.error("Failed to initialize smart contract instance:", error);
+        return null;
     }
 }
  
