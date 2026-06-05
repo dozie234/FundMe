@@ -42,3 +42,20 @@ contract FundMe {
             isCompleted: false
         });
     }
+    // Function to fund an existing campaign using its unique ID
+    function fundCampaign(uint256 _campaignId) public payable {
+        // 1. Validation check: Make sure the campaign ID exists
+        require(_campaignId > 0 && _campaignId <= campaignCount, "Campaign does not exist");
+        
+        // 2. Validation check: Make sure they are actually sending money
+        require(msg.value > 0, "Contribution amount must be greater than zero");
+
+        // Reference the specific campaign from our storage mapping
+        Campaign storage campaign = campaigns[_campaignId];
+
+        // Validation check: Make sure the campaign hasn't already been finalized
+        require(!campaign.isCompleted, "Campaign is already completed");
+
+        // Update the total amount raised for this specific campaign card record
+        campaign.amountRaised += msg.value;
+    }
