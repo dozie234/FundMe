@@ -19,3 +19,26 @@ contract FundMe {
     // Maps a unique ID (uint256) to its respective Campaign structural data object
     mapping(uint256 => Campaign) public campaigns;
 }
+
+// Function to create a new crowdfunding campaign on-chain
+    function createCampaign(
+        string memory _title, 
+        string memory _description, 
+        uint256 _goal
+    ) public {
+        // Validation check: Make sure the funding goal is greater than zero
+        require(_goal > 0, "Funding goal must be greater than zero cUSD");
+
+        // Increment our sequential identifier counter
+        campaignCount++;
+
+        // Store the new Campaign struct inside our blockchain storage mapping
+        campaigns[campaignCount] = Campaign({
+            creator: msg.sender,     // The wallet calling this function signs the record
+            title: _title,
+            description: _description,
+            goal: _goal,
+            amountRaised: 0,         // Starts with zero contributions
+            isCompleted: false
+        });
+    }
