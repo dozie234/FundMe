@@ -59,3 +59,16 @@ contract FundMe {
         // Update the total amount raised for this specific campaign card record
         campaign.amountRaised += msg.value;
     }
+
+    // Function to retrieve the entire list of campaigns in a single network query
+    function getCampaigns() public view returns (Campaign[] memory) {
+        // Create a temporary array in memory with a fixed length matching our count
+        Campaign[] memory allCampaigns = new Campaign[](campaignCount);
+
+        // Loop through our mapping storage and populate our temporary array
+        for (uint256 i = 0; i < campaignCount; i++) {
+            allCampaigns[i] = campaigns[i + 1];
+        }
+
+        return allCampaigns;
+    }
