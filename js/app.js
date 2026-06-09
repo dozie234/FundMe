@@ -2,17 +2,16 @@
 let userWalletAddress = null;
 let web3Provider = null;
 
-// --- NEW: Smart Contract Deployment Parameters ---
-// Placeholders for when we deploy the contract to the Celo Alfajores Testnet
-const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; 
+// --- Smart Contract Deployment Parameters ---
+const CONTRACT_ADDRESS = "0xd9145CCE52D386f254917e481eB44e9943F39138"; 
 
 // The ABI maps our JS to our smart contract functions
 const CONTRACT_ABI = [
-    "function fundCampaign(uint256 campaignId) public payable",
-    "function createCampaign(string title, string description, uint256 goal) public",
-    "function getCampaigns() public view returns (tuple(address creator, string title, string description, uint256 goal, uint256 amountRaised)[])"
+    "function createCampaign(string _title, string _description, uint256 _goal) public",
+    "function fundCampaign(uint256 _campaignId) public payable",
+    "function getCampaigns() public view returns (tuple(address creator, string title, string description, uint256 goal, uint256 amountRaised, bool isCompleted)[])",
+    "function campaignCount() public view returns (uint256)"
 ];
-//
 
 // 1. Check if the app is running in a Web3/MiniPay environment
 function checkWalletEnvironment() {
@@ -23,13 +22,10 @@ function checkWalletEnvironment() {
         console.log("Desktop detected: Activating automatic Test Wallet Environment...");
         window.ethereum = {
             request: async (args) => {
-                // ✅ UPDATED: A mathematically flawless, verified checksum address
-                const validTestAddress = ["0x71C249a123456789abcdef123456789abcdef123"];
+                // ✅ UPDATED: Clean, verified checksum mock address layout
+                const validTestAddress = ["0xd9145CCE52D386f254917e481eB44e9943F39138"];
                 
-                if (args.method === 'eth_requestAccounts') {
-                    return validTestAddress;
-                }
-                if (args.method === 'eth_accounts') {
+                if (args.method === 'eth_requestAccounts' || args.method === 'eth_accounts') {
                     return validTestAddress;
                 }
                 // Fake the Chain ID request so Ethers v6 doesn't crash
@@ -69,13 +65,11 @@ async function connectWallet() {
             userWalletAddress = accounts[0];
             console.log("Connected wallet address:", userWalletAddress);
             
-            // --- NEW: Query Network Chain ID using Ethers ---
+            // Query Network Chain ID using Ethers
             if (web3Provider) {
                 const network = await web3Provider.getNetwork();
-                // Celo Mainnet Chain ID is 42220, Alfajores Testnet is 44787
                 console.log("Connected to Chain ID:", network.chainId.toString());
             }
-            // ------------------------------------------------
             
             // Shorten the address for the UI (e.g., 0x1234...abcd)
             const shortAddress = `${userWalletAddress.substring(0, 6)}...${userWalletAddress.substring(userWalletAddress.length - 4)}`;
@@ -96,19 +90,8 @@ async function getSmartContractInstance() {
     if (!web3Provider) return null;
     
     try {
-        let signer;
-        
-        // Check if we are running our mock environment
-        if (userWalletAddress && userWalletAddress.toLowerCase() === "0x71c249a123456789abcdef123456789abcdef123") {
-            // Hardcode a clean fallback signer structure to bypass internal v6 checksum checks completely
-            signer = {
-                provider: web3Provider,
-                getAddress: async () => ethers.getAddress("0x9a3674640103EAEbc11b418B51fD884d5B2aAc83")
-            };
-        } else {
-            // Standard live connection behavior inside actual MiniPay
-            signer = await web3Provider.getSigner();
-        }
+        // ✅ FIXED: Cleaned up the ghost logic to handle mock signers cleanly
+ const signer = await web3Provider.getSigner();
         
         // Create a new Ethers contract instance linked to the network
         const fundMeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
@@ -123,9 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialize verification checks instantly
     checkWalletEnvironment();
 
-    // ==========================================
-    // 1. GLOBAL ELEMENT SELECTIONS
-    // ==========================================
+    // GLOBAL ELEMENT SELECTIONS
     const navHome = document.getElementById("nav-home");
     const navCreate = document.getElementById("nav-create");
     const navProfile = document.getElementById("nav-profile");
@@ -136,92 +117,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const heroLaunchBtn = document.getElementById("hero-launch-btn");
     const campaignForm = document.getElementById("campaign-creation-form");
-    const campaignList = document.querySelector(".campaign-list"); // Target class
+    const campaignList = document.querySelector(".campaign-list"); 
     
     const profileWalletText = document.getElementById("profile-wallet-address");
     const profileBalanceText = document.getElementById("profile-balance");
 
-    // ==========================================
-    // 2. VIEW SWITCHING ROUTER ENGINE
-    // ==========================================
+    // VIEW SWITCHING ROUTER ENGINE
     function switchView(targetView, activeNavButton) {
-        // Hide all views
         document.querySelectorAll(".app-view").forEach(view => {
             view.classList.remove("active");
         });
-        // Remove active highlights from all buttons
         document.querySelectorAll(".nav-item").forEach(btn => {
             btn.classList.remove("active");
         });
 
-        // Show target view and highlight its button
         targetView.classList.add("active");
         activeNavButton.classList.add("active");
         
-        // Auto-scroll back to top of the mobile frame
         document.querySelector(".app-shell").scrollTop = 0;
     }
 
-    // Attach click events to nav tabs
     if (navHome) navHome.addEventListener("click", () => switchView(viewHome, navHome));
     if (navCreate) navCreate.addEventListener("click", () => switchView(viewCreate, navCreate));
     if (navProfile) navProfile.addEventListener("click", () => switchView(viewProfile, navProfile));
-// Hook up home banner button to switch views
+
     if (heroLaunchBtn) {
         heroLaunchBtn.addEventListener("click", () => {
             switchView(viewCreate, navCreate);
         });
     }
 
-    // ==========================================
-    // 3. INITIAL MOCK STATES
-    // ==========================================
+    // INITIAL STATES
     if (profileWalletText && profileBalanceText) {
-        profileWalletText.textContent = "0x71C...49a1"; 
-        profileBalanceText.textContent = "45.50";
+        profileWalletText.textContent = "0xd914...39138"; 
+        profileBalanceText.textContent = "0.00";
     }
 
-    // ==========================================
-   // ==========================================
+  // ==========================================
     // 4. DYNAMIC FORM PROCESSING
     // ==========================================
     if (campaignForm && campaignList) {
-        // ✅ CHANGED: Added 'async' so we can handle blockchain network delays cleanly
         campaignForm.addEventListener("submit", async (e) => {
             e.preventDefault(); 
 
-            // 1. Guard check: Must be authenticated via MiniPay connection
+            // 1. Guard check: Must be authenticated via wallet connection
             if (!userWalletAddress) {
                 alert("Please connect your MiniPay wallet at the top before creating a campaign!");
                 return;
             }
 
-            const newTitle = document.getElementById("form-title").value;
-            const newDesc = document.getElementById("form-desc").value;
-            const newGoal = document.getElementById("form-goal").value;
+            // Grab form values cleanly
+            const title = document.getElementById("form-title").value;
+            const description = document.getElementById("form-desc").value;
+            const goalInWei = document.getElementById("form-goal").value; 
 
-            try {
-                // --- FUTURE BLOCKCHAIN CALL PREPARATION ---
-                console.log("Preparing to send campaign data on-chain...");
-                const contract = await getSmartContractInstance();
-                
-                if (contract) {
-                    console.log("Contract instance loaded successfully. Ready for deployment swap.");
-                    // When our contract is deployed, this is where we will run:
-                    // const tx = await contract.createCampaign(newTitle, newDesc, newGoal);
-                    // await tx.wait(); 
-                }
-                // ------------------------------------------
-
-                // Generate clean card string with precise data handling parameters
+            // 💡 NEW: Helper function to inject the new card directly to your UI
+            function updateCampaignUI() {
                 const newCardHTML = 
                     `<div class="campaign-card">
                         <div class="card-meta">
                             <span class="category-badge">Community</span>
                             <span class="time-left">Just now</span>
                         </div>
-                        <h3>${newTitle}</h3>
-                        <p class="card-description">${newDesc}</p>
+                        <h3>${title}</h3>
+                        <p class="card-description">${description}</p>
                         <div class="card-progress-section">
                             <div class="progress-labels">
                                 <span class="amount-raised"><strong>0</strong> cUSD raised</span>
@@ -231,23 +190,43 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <div class="progress-fill" style="width: 0%;"></div>
                             </div>
                             <div class="progress-footer">
-                                <span class="total-goal" data-target="${newGoal}">Target: ${newGoal} cUSD</span>
+                                <span class="total-goal" data-target="${goalInWei}">Target: ${goalInWei} cUSD</span>
                             </div>
                         </div>
                         <button class="fund-btn">Fund Campaign</button>
-                    </div>`
-                ;
+                    </div>`;
 
                 // Push to home timeline feed
                 campaignList.insertAdjacentHTML("afterbegin", newCardHTML);
-
-                // Clean input layout fields
                 campaignForm.reset();
-
-                // Smoothly routes view right back home
                 switchView(viewHome, navHome);
+            }
+
+            // 🚀 DESKTOP TESTING ENVIRONMENT INTERCEPTION
+            // If we are using the mock address, bypass the actual RPC call to prevent internal Ethers crashes
+            if (userWalletAddress.toLowerCase() === "0xd9145cce52d386f254917e481eb44e9943f39138") {
+                console.log("Desktop Mock Network Active: Simulating on-chain deployment...");
+                updateCampaignUI();
+                alert("Campaign deployed successfully (Local Simulator Mode)!");
+                return; // Stop execution here so it doesn't hit the Ethers crash!
+            }
+
+            // --- LIVE MINIPAY PRODUCTION BLOCKCHAIN PATH ---
+            try {
+                console.log("Preparing to send campaign data on-chain...");
+                const contract = await getSmartContractInstance();
                 
-                alert("Campaign created successfully!");
+                if (!contract) throw new Error("Could not initialize contract instance.");
+
+                console.log("Sending data to contract...", { title, description, goalInWei });
+                const tx = await contract.createCampaign(title, description, goalInWei);
+                console.log("Transaction pending... Hash:", tx.hash);
+
+                const receipt = await tx.wait();
+                console.log("Success! Campaign created on-chain in block:", receipt.blockNumber);
+
+                updateCampaignUI();
+                alert("Campaign deployed successfully to the blockchain!");
 
             } catch (error) {
                 console.error("Blockchain campaign creation failed:", error);
@@ -256,22 +235,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // ==========================================
-    // 5. PHASE 4: SIMULATED FUNDING INTERACTION ENGINE
-    // ==========================================
+    // SIMULATED FUNDING INTERACTION ENGINE
     if (campaignList) {
         campaignList.addEventListener("click", async (e) => {
             if (e.target.classList.contains("fund-btn")) {
                 const button = e.target;
                 const card = button.closest(".campaign-card");
                 
-                // 1. Guard check: Must be authenticated via MiniPay connection
                 if (!userWalletAddress) {
                     alert("Please connect your MiniPay wallet at the top first!");
                     return;
                 }
                 
-                // 2. Input Prompt
                 const donationInput = prompt("Enter amount to fund (in cUSD):");
                 const amount = parseFloat(donationInput);
                 
@@ -280,31 +255,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
                 
-                // 3. Process UI Transition State
                 button.innerText = "Processing Tx...";
                 button.disabled = true;
                 button.style.opacity = "0.5";
- // Network consensus delay delay mimic (2 seconds)
+
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                // 4. Extract parameters and metrics
                 const raisedEl = card.querySelector(".amount-raised strong");
                 const percentageEl = card.querySelector(".goal-percentage");
                 const fillEl = card.querySelector(".progress-fill");
                 const targetGoal = parseFloat(card.querySelector(".total-goal").getAttribute("data-target"));
                 
                 let currentRaised = parseFloat(raisedEl.innerText);
-                
-                // Recalculate metrics
                 currentRaised += amount;
                 let currentPercentage = Math.min(Math.round((currentRaised / targetGoal) * 100), 100);
                 
-                // 5. Apply updates directly into DOM layout
                 raisedEl.innerText = currentRaised;
                 percentageEl.innerText = `${currentPercentage}%`;
                 fillEl.style.width = `${currentPercentage}%`;
                 
-                // Reset interaction states
                 button.innerText = "Fund Campaign";
                 button.disabled = false;
                 button.style.opacity = "1";
