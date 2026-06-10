@@ -292,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 🚀 DESKTOP TESTING ENVIRONMENT INTERCEPTION
             // If we are using the mock address, bypass the actual RPC call to prevent internal Ethers crashes
-            if (userWalletAddress.toLowerCase() === "0xd9145cce52d386f254917e481eb44e9943f39138") {
+            if (!window.ethereum.isMiniPay && !window.ethereum.isMetaMask) {
                 console.log("Desktop Mock Network Active: Simulating on-chain deployment...");
                 updateCampaignUI();
                 alert("Campaign deployed successfully (Local Simulator Mode)!");
