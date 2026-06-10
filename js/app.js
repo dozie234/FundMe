@@ -90,8 +90,14 @@ async function getSmartContractInstance() {
     if (!web3Provider) return null;
     
     try {
-        // ✅ FIXED: Cleaned up the ghost logic to handle mock signers cleanly
- const signer = await web3Provider.getSigner();
+        // Wrap the signer generation in a local try/catch so mock environments don't crash it
+        let signer;
+        try {
+            signer = await web3Provider.getSigner();
+        } catch (signerError) {
+            console.log("Desktop Simulator: Operating without a live network signer node.");
+            return null; // Return null safely so the calling function handles it smoothly
+        }
         
         // Create a new Ethers contract instance linked to the network
         const fundMeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
@@ -105,6 +111,33 @@ async function getSmartContractInstance() {
 document.addEventListener("DOMContentLoaded", () => {
     // Initialize verification checks instantly
     checkWalletEnvironment();
+
+    // ==========================================
+    // NEW: FETCH LIVE CAMPAIGNS FROM THE BLOCKCHAIN
+    // ==========================================
+    async function loadOnChainCampaigns() {
+        try {
+            console.log("Attempting to read contract data...");
+            const contract = await getSmartContractInstance();
+            
+            if (!contract) {
+                console.log("Using local UI layout (No active provider connection).");
+                return;
+            }
+
+            // Call the read-only function from your smart contract ABI
+            const count = await contract.campaignCount();
+            console.log(`Live Contract Connection Successful! Total campaigns on-chain: ${count.toString()}`);
+            
+            // If there are campaigns on-chain, we will write the loop to render them next!
+            
+        } catch (error) {
+            console.error("Failed to read data from smart contract:", error);
+        }
+    }
+
+    // Run it immediately on page load
+    loadOnChainCampaigns();
 
     // GLOBAL ELEMENT SELECTIONS
     const navHome = document.getElementById("nav-home");
