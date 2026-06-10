@@ -114,8 +114,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Initialize verification checks instantly
     checkWalletEnvironment();
 
-    // ==========================================
-    // NEW: FETCH LIVE CAMPAIGNS FROM THE BLOCKCHAIN
+   // ==========================================
+    // FETCH LIVE CAMPAIGNS FROM THE BLOCKCHAIN
     // ==========================================
     async function loadOnChainCampaigns() {
         try {
@@ -127,11 +127,64 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // Call the read-only function from your smart contract ABI
+            // 1. Fetch total campaigns count from your smart contract
             const count = await contract.campaignCount();
-            console.log(`Live Contract Connection Successful! Total campaigns on-chain: ${count.toString()}`);
+            const totalCampaigns = Number(count);
+            console.log(`Live Contract Connection Successful! Total campaigns on-chain: ${totalCampaigns}`);
             
-            // If there are campaigns on-chain, we will write the loop to render them next!
+            if (totalCampaigns === 0) {
+                campaignList.innerHTML = '<p class="no-campaigns">No active campaigns found. Be the first to launch one!</p>';
+                return;
+            }
+
+            // 2. Fetch the structural array data from the contract method
+            const campaigns = await contract.getCampaigns();
+            
+            // Clear out any hardcoded template cards before displaying live chain data
+            campaignList.innerHTML = "";
+
+            // 3. Loop through each live campaign array object and render it on screen
+            for (let i = 0; i < campaigns.length; i++) {
+                const item = campaigns[i];
+                
+                // ✅ UPDATED: Convert BigInt Wei values to clean, readable cUSD numbers using Ethers v6
+                const goalAmount = ethers.formatEther(item.goal);
+                const raisedAmount = ethers.formatEther(item.amountRaised);
+                
+                // Calculate accurate progress percentages safely
+                let progressPercent = 0;
+                if (Number(goalAmount) > 0) {
+                    progressPercent = Math.min(Math.round((Number(raisedAmount) / Number(goalAmount)) * 100), 100);
+                }
+
+                const cardHTML = 
+                    `<div class="campaign-card" data-id="${i}">
+                        <div class="card-meta">
+                            <span class="category-badge">Web3 Pool</span>
+                            <span class="time-left">${item.isCompleted ? "Completed" : "Active"}</span>
+                        </div>
+                        <h3>${item.title}</h3>
+                        <p class="card-description">${item.description}</p>
+                        <div class="card-progress-section">
+                            <div class="progress-labels">
+                                <span class="amount-raised"><strong>${raisedAmount}</strong> cUSD raised</span>
+                                <span class="goal-percentage">${progressPercent}%</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill" style="width: ${progressPercent}%;"></div>
+                            </div>
+                            <div class="progress-footer">
+                                <span class="total-goal" data-target="${goalAmount}">Target: ${goalAmount} cUSD</span>
+                            </div>
+                        </div>
+                        <button class="fund-btn" ${item.isCompleted ? "disabled" : ""}>
+                            ${item.isCompleted ? "Campaign Closed" : "Fund Campaign"}
+                        </button>
+                    </div>`
+                ;
+                
+                campaignList.insertAdjacentHTML("beforeend", cardHTML);
+            }
             
         } catch (error) {
             console.error("Failed to read data from smart contract:", error);
