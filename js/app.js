@@ -87,21 +87,23 @@ async function connectWallet() {
 
 // 3. Initialize the Smart Contract Instance for Read/Write Actions
 async function getSmartContractInstance() {
+    // If there is no provider wrapper, stop immediately
     if (!web3Provider) return null;
     
     try {
-        // Wrap the signer generation in a local try/catch so mock environments don't crash it
-        let signer;
-        try {
-            signer = await web3Provider.getSigner();
-        } catch (signerError) {
-            console.log("Desktop Simulator: Operating without a live network signer node.");
-            return null; // Return null safely so the calling function handles it smoothly
+        // 🚀 DESKTOP SIMULATOR INTERCEPTION
+        // If we are on desktop (detected cleanly because window.ethereum was mocked), 
+        // bypass the provider completely to stop Ethers from doing crashing background network checks.
+        if (!window.ethereum.isMiniPay && !window.ethereum.isMetaMask) {
+            console.log("Desktop Simulator: Safe bypass of live network contract initialization.");
+            return null; 
         }
-        
-        // Create a new Ethers contract instance linked to the network
+
+        // Standard live connection behavior inside an actual MiniPay mobile browser
+        const signer = await web3Provider.getSigner();
         const fundMeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         return fundMeContract;
+
     } catch (error) {
         console.error("Failed to initialize smart contract instance:", error);
         return null;
