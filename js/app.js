@@ -330,19 +330,40 @@ document.addEventListener("DOMContentLoaded", () => {
                 const parsedTarget = ethers.utils.parseUnits(targetAmount.toString(), 18);
 try {
     // 1. Convert the goal input (e.g., "0.1") to 18-decimal Wei format safely
-    const goalInWei = ethers.utils.parseUnits(goalInput.value.toString(), 18);
+  try {
+    // 1. Grab the HTML input elements directly to ensure they exist
+    const titleField = document.getElementById("title") || document.querySelector('input[placeholder*="TITLE"]');
+    const descField = document.getElementById("description") || document.querySelector('textarea') || document.querySelector('input[placeholder*="DESCRIPTION"]');
+    const goalField = document.getElementById("goal") || document.querySelector('input[type="number"]');
 
-    console.log("Sending formatted payload to MiniPay...");
+    // 2. Extract the text/numbers safely
+    const titleVal = titleField ? titleField.value : "Test Title";
+    const descVal = descField ? descField.value : "Test Description";
+    const goalVal = goalField ? goalField.value : "0.01"; // Defaulting to a tiny amount for testing
 
-    // 2. Execute the transaction with explicit overrides
+    // 3. Convert the goal input safely to 18-decimal format
+    const goalInWei = ethers.utils.parseUnits(goalVal.toString(), 18);
+
+    console.log("Sending formatted payload to MiniPay...", { titleVal, descVal, goalInWei });
+
+    // 4. Execute the transaction
     const tx = await contract.createCampaign(
-        titleInput.value,
-        descriptionInput.value,
+        titleVal,
+        descVal,
         goalInWei,
         {
-            gasLimit: 250000 // Forces clear headroom for the mobile webview
+            gasLimit: 300000 // Slightly higher gas limit to avoid execution failures
         }
     );
+
+    alert("Transaction sent! Wait for approval...");
+    await tx.wait();
+    alert("Campaign successfully deployed!");
+
+} catch (error) {
+    console.error("Error launching campaign:", error);
+    alert("Something went wrong while launching your campaign on-chain.\nError details: " + error.message);
+}
 
     alert("Transaction submitted! Awaiting confirmation...");
     await tx.wait();
