@@ -7,10 +7,29 @@ const CONTRACT_ADDRESS = "0xd9145CCE52D386f254917e481eB44e9943F39138";
 
 // The ABI maps our JS to our smart contract functions
 const CONTRACT_ABI = [
-    "function createCampaign(string _title, string _description, uint256 _goal) public",
-    "function fundCampaign(uint256 _campaignId) public payable",
-    "function getCampaigns() public view returns (tuple(address creator, string title, string description, uint256 goal, uint256 amountRaised, bool isCompleted)[])",
-    "function campaignCount() public view returns (uint256)"
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_title", "type": "string" },
+      { "internalType": "string", "name": "_description", "type": "string" },
+      { "internalType": "uint256", "name": "_goal", "type": "uint256" }
+    ],
+    "name": "createCampaign",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_campaignId", "type": "uint256" }
+    ],
+    "name": "fundCampaign",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  // Keep your view functions human-readable if you want, or leave them as is:
+  "function getCampaigns() public view returns (tuple(address creator, string title, string description, uint256 goal, uint256 amountRaised, bool isCompleted)[])",
+  "function campaignCount() public view returns (uint256)"
 ];
 
 // 1. Check if the app is running in a Web3/MiniPay environment
@@ -292,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // 🚀 DESKTOP TESTING ENVIRONMENT INTERCEPTION
             // If we are using the mock address, bypass the actual RPC call to prevent internal Ethers crashes
-            if (!window.ethereum.isMiniPay && !window.ethereum.isMetaMask) {
+            if (!window.ethereum.isMiniPay && !window.ethereum.isMetaMask){
                 console.log("Desktop Mock Network Active: Simulating on-chain deployment...");
                 updateCampaignUI();
                 alert("Campaign deployed successfully (Local Simulator Mode)!");
@@ -307,7 +326,32 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!contract) throw new Error("Could not initialize contract instance.");
 
                 console.log("Sending data to contract...", { title, description, goalInWei });
-                const tx = await contract.createCampaign(title, description, goalInWei);
+               // 1. Ensure targetAmount is properly parsed to Wei using Ethers
+                const parsedTarget = ethers.utils.parseUnits(targetAmount.toString(), 18);
+try {
+    // 1. Convert the goal input (e.g., "0.1") to 18-decimal Wei format safely
+    const goalInWei = ethers.utils.parseUnits(goalInput.value.toString(), 18);
+
+    console.log("Sending formatted payload to MiniPay...");
+
+    // 2. Execute the transaction with explicit overrides
+    const tx = await contract.createCampaign(
+        titleInput.value,
+        descriptionInput.value,
+        goalInWei,
+        {
+            gasLimit: 250000 // Forces clear headroom for the mobile webview
+        }
+    );
+
+    alert("Transaction submitted! Awaiting confirmation...");
+    await tx.wait();
+    alert("Campaign successfully deployed on-chain!");
+
+} catch (error) {
+    console.error(error);
+    alert("Something went wrong while launching your campaign on-chain.");
+}
                 console.log("Transaction pending... Hash:", tx.hash);
 
                 const receipt = await tx.wait();
